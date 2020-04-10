@@ -31,7 +31,12 @@
 typedef void (*funct_ptr)(void);
 
 int want_bootloader(void) {
-	return 1;
+	int want = 0;
+    uint32_t user_sp = *(volatile uint32_t *)USER_PROGRAM;
+    if ((user_sp & 0x2FFE0000) != 0x20000000)
+		want |= 1;
+
+	return want;
 }
 
 void __libc_init_array() {
@@ -96,20 +101,9 @@ int main() {
 
 	SystemClock_Config();
 
-	// Turn GPIOB clock on
-	bit_set(RCC->APB2ENR, RCC_APB2ENR_IOPBEN);
-
-	// Set B2 as Input Mode Floating
-	bit_clear(GPIOB->CRL, GPIO_CRL_MODE2);
-	bit_set(GPIOB->CRL, GPIO_CRL_CNF2_0);
-	bit_clear(GPIOB->CRL, GPIO_CRL_CNF2_1);
-
 	if(want_bootloader()) {
 		USB_Init(HIDUSB_EPHandler, HIDUSB_Reset);
 	} else {
-		// Turn GPIOB clock off
-		bit_clear(RCC->APB2ENR, RCC_APB2ENR_IOPBEN);
-
 		SCB->VTOR = USER_PROGRAM;
 
 		asm volatile("msr msp, %0"::"g"(*(volatile uint32_t *) USER_PROGRAM));

@@ -32,10 +32,6 @@
 
 static uint8_t CMD_SIGNATURE[] = {'B','T','L','D','C','M','D'};
 
-static uint8_t pageData[1024];
-static volatile uint8_t currentPage = MIN_PAGE;
-static volatile uint16_t currentPageOffset = 0;
-
 extern volatile uint8_t DeviceAddress;
 extern volatile uint16_t DeviceConfigured, DeviceStatus;
 
@@ -130,10 +126,6 @@ void HIDUSB_Reset() {
 
 	led_init();
 	led_off();
-
-	// Initialize Flash Page Settings
-	currentPage = MIN_PAGE;
-	currentPageOffset = 0;
 
 	_SetBTABLE(BTABLE_ADDRESS);
 
@@ -242,16 +234,8 @@ static void HIDUSB_WriteFlash(uint32_t page, uint8_t *data, uint16_t size) {
 	bit_clear(FLASH->CR, FLASH_CR_PG);
 }
 
-static uint8_t HIDUSB_PacketIsCommand() {
+static uint8_t HIDUSB_PacketIsCommand(const uint8_t *pageData) {
 	uint8_t hasdata = 0;
-
-	for(int i = 8; i < 128; i++) {
-		hasdata |= pageData[i];
-	}
-
-	if(hasdata) {
-		return 0;
-	}
 
 	if (pageData[0] == CMD_SIGNATURE[0] && pageData[1] == CMD_SIGNATURE[1] && pageData[2] == CMD_SIGNATURE[2] &&
 			pageData[3] == CMD_SIGNATURE[3] && pageData[4] == CMD_SIGNATURE[4] && pageData[5] == CMD_SIGNATURE[5] &&
@@ -262,29 +246,48 @@ static uint8_t HIDUSB_PacketIsCommand() {
 	return 0;
 }
 
+enum {
+	STATE_INIT = 0,
+	STATE_FLASH,
+};
+
 void HIDUSB_HandleData(uint8_t *data) {
+	static int state = STATE_INIT;
+	static uint8_t pageData[1024];
+	static uint32_t currentPage;
+	static uint32_t currentPageOffset;
+	static uint32_t pagesToFlash;
+
 	uint32_t pageAddress;
 
 	memcpy(pageData + currentPageOffset, data, 8);
 
 	currentPageOffset += 8;
 
-	if(currentPageOffset == 128) {
-		if(HIDUSB_PacketIsCommand()) {
-			switch(pageData[7]) {
-			case 0x00: // Reset Page Command
+	if (state == STATE_INIT) {
+		if (currentPageOffset == 128 && HIDUSB_PacketIsCommand(pageData)) {
+			switch (pageData[7]) {
+			case 0x01:
+				/* Flash */
 				currentPage = MIN_PAGE;
-				currentPageOffset = 0;
-
+				pagesToFlash = pageData[8] + 256 * pageData[9];
+				/* Don't allow to pass a ridiculous value. 2 megs max */
+				if (pagesToFlash < 2048)
+					state = STATE_FLASH;
+				break;
+			case 0x02:
+				/* Reboot */
+				NVIC_SystemReset();
 				break;
 			default:
 				break;
 			}
 		}
-	} else {
-		if(currentPageOffset >= 1024) {
-			led_on();
-
+		currentPageOffset = 0;
+	} else if (state == STATE_FLASH) {
+		/* Flashing */
+		if (currentPageOffset == 1024) {
+			/* Received another page */
 			pageAddress = 0x08000000 + (currentPage * 1024);
 
 			HIDUSB_FlashUnlock();
@@ -294,8 +297,12 @@ void HIDUSB_HandleData(uint8_t *data) {
 
 			currentPage++;
 			currentPageOffset = 0;
+		}
 
-			led_off();
+		/* Did we flash everything? */
+		if (currentPage == pagesToFlash) {
+			/* Back to processing commands */
+			state = STATE_INIT;
 		}
 	}
 }

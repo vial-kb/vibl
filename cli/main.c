@@ -46,11 +46,14 @@ static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 int main(int argc, char **argv) {
 	uint8_t page_data[1024];
 	uint8_t hid_buffer[129];
-	uint8_t CMD_RESET_PAGES[8] = {'B','T','L','D','C','M','D', 0x00};
+	uint8_t CMD_FLASH[8] = {'B','T','L','D','C','M','D', 0x01};
+	uint8_t CMD_REBOOT[8] = {'B','T','L','D','C','M','D', 0x02};
 	hid_device *handle = NULL;
 	size_t read_bytes;
 	FILE *firmware_file = NULL;
 	int error = 0;
+	long firmware_size;
+	int firmware_pages;
 
 	setbuf(stdout, NULL);
 
@@ -80,15 +83,25 @@ int main(int argc, char **argv) {
 		goto exit;
 	}
 
-	// Send RESET PAGES command to put HID bootloader in initial stage...
-	memset(hid_buffer, 0, sizeof(hid_buffer));
-	memcpy(&hid_buffer[1], CMD_RESET_PAGES, sizeof(CMD_RESET_PAGES));
+	fseek(firmware_file, 0, SEEK_END);
+	/* Get firmware size and number of pages */
+	firmware_size = ftell(firmware_file);
+	if (firmware_size % 1024 != 0)
+		firmware_size += 1024 - firmware_size % 1024;
+	firmware_pages = firmware_size / 1024;
 
-	printf("Sending reset pages command...\n");
+	// Send flash command to put HID bootloader in initial stage...
+	memset(hid_buffer, 0, sizeof(hid_buffer));
+	memcpy(&hid_buffer[1], CMD_FLASH, sizeof(CMD_FLASH));
+	/* number of pages to flash as little-endian */
+	hid_buffer[9] = firmware_pages % 256;
+	hid_buffer[10] = firmware_pages / 256;
+
+	printf("Sending flash pages command...\n");
 
 	// Flash is unavailable when writing to it, so USB interrupt may fail here
 	if(!usb_write(handle, hid_buffer, 129)) {
-		printf("Error while sending reset pages command.\n");
+		printf("Error while sending flash pages command.\n");
 		error = 1;
 		goto exit;
 	}
@@ -118,6 +131,16 @@ int main(int argc, char **argv) {
 
 		memset(page_data, 0, sizeof(page_data));
 		read_bytes = fread(page_data, 1, sizeof(page_data), firmware_file);
+	}
+
+	printf("Rebooting...\n");
+	/* Reboot */
+	memset(hid_buffer, 0, sizeof(hid_buffer));
+	memcpy(&hid_buffer[1], CMD_REBOOT, sizeof(CMD_REBOOT));
+	if(!usb_write(handle, hid_buffer, 129)) {
+		printf("Error while sending reboot command.\n");
+		error = 1;
+		goto exit;
 	}
 
 	printf("Ok!\n");
