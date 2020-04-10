@@ -65,8 +65,8 @@ static const uint8_t USB_DEVICE_DESC[] = {
 	0x09, 0x12,  // idVendor 0x1209
 	0xBE, 0xBA,  // idProduct 0xBABE
 	0x01, 0x00,  // bcdDevice 0.01
-	0x01,        // iManufacturer (String Index)
-	0x02,        // iProduct (String Index)
+	0x00,        // iManufacturer (String Index)
+	0x01,        // iProduct (String Index)
 	0x00,        // iSerialNumber (String Index)
 	0x01         // bNumConfigurations 1
 };
@@ -190,11 +190,6 @@ void HIDUSB_GetDescriptor(USB_SetupPacket *SPacket) {
 								sizeof(sdLangID) : SPacket->wLength);
 				break;
 			case 0x01:
-				USB_SendData(0, (uint16_t *) sdProduct,
-						SPacket->wLength > sizeof(sdProduct) ?
-								sizeof(sdProduct) : SPacket->wLength);
-				break;
-			case 0x02:
 				USB_SendData(0, (uint16_t *) sdProduct,
 						SPacket->wLength > sizeof(sdProduct) ?
 								sizeof(sdProduct) : SPacket->wLength);

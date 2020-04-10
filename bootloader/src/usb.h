@@ -36,7 +36,6 @@ typedef struct {
 extern USB_RxTxBuf_t RxTxBuffer[MAX_EP_NUM];
 
 extern const uint8_t sdProduct[0x2C];
-extern const uint8_t sdSerial[0x16];
 extern const uint8_t sdLangID[0x04];
 
 /* USB Standard Request Codes */

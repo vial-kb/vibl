@@ -37,12 +37,6 @@ const uint8_t sdProduct[] = {
 	'd', 0, 'e', 0, 'r', 0
 };
 
-const uint8_t sdSerial[] = {
-	0x16, // Size,
-	0x03, // Descriptor type
-	'1',0,'2',0,'3',0,'4',0,'5',0,'6',0,'7',0,'8',0,'9',0,'0',0
-};
-
 const uint8_t sdLangID[] = {
 		0x04, // Size,
 		0x03, // Descriptor type
