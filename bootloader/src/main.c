@@ -39,10 +39,6 @@ int want_bootloader(void) {
 	return want;
 }
 
-void __libc_init_array() {
-	/* Don't need for the bootloader */
-}
-
 /**
   * @brief  System Clock Configuration
   *         The system Clock is configured as follow :
