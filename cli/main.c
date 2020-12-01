@@ -46,8 +46,8 @@ static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 int main(int argc, char **argv) {
 	uint8_t page_data[1024];
 	uint8_t hid_buffer[129];
-	uint8_t CMD_FLASH[8] = {'B','T','L','D','C','M','D', 0x01};
-	uint8_t CMD_REBOOT[8] = {'B','T','L','D','C','M','D', 0x02};
+	uint8_t CMD_FLASH[8] = {'V','C',0x01};
+	uint8_t CMD_REBOOT[8] = {'V','C',0x02};
 	hid_device *handle = NULL;
 	size_t read_bytes;
 	FILE *firmware_file = NULL;
@@ -94,13 +94,13 @@ int main(int argc, char **argv) {
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 	memcpy(&hid_buffer[1], CMD_FLASH, sizeof(CMD_FLASH));
 	/* number of pages to flash as little-endian */
-	hid_buffer[9] = firmware_pages % 256;
-	hid_buffer[10] = firmware_pages / 256;
+	hid_buffer[4] = firmware_pages % 256;
+	hid_buffer[5] = firmware_pages / 256;
 
 	printf("Sending flash pages command...\n");
 
 	// Flash is unavailable when writing to it, so USB interrupt may fail here
-	if(!usb_write(handle, hid_buffer, 129)) {
+	if(!usb_write(handle, hid_buffer, 9)) {
 		printf("Error while sending flash pages command.\n");
 		error = 1;
 		goto exit;
@@ -137,11 +137,7 @@ int main(int argc, char **argv) {
 	/* Reboot */
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 	memcpy(&hid_buffer[1], CMD_REBOOT, sizeof(CMD_REBOOT));
-	if(!usb_write(handle, hid_buffer, 129)) {
-		printf("Error while sending reboot command.\n");
-		error = 1;
-		goto exit;
-	}
+	usb_write(handle, hid_buffer, 9);
 
 	printf("Ok!\n");
 

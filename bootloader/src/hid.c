@@ -229,16 +229,8 @@ static void HIDUSB_WriteFlash(uint32_t page, uint8_t *data, uint16_t size) {
 	bit_clear(FLASH->CR, FLASH_CR_PG);
 }
 
-static uint8_t HIDUSB_PacketIsCommand(const uint8_t *pageData) {
-	uint8_t hasdata = 0;
-
-	if (pageData[0] == CMD_SIGNATURE[0] && pageData[1] == CMD_SIGNATURE[1] && pageData[2] == CMD_SIGNATURE[2] &&
-			pageData[3] == CMD_SIGNATURE[3] && pageData[4] == CMD_SIGNATURE[4] && pageData[5] == CMD_SIGNATURE[5] &&
-			pageData[6] == CMD_SIGNATURE[6]) {
-		return 1;
-	}
-
-	return 0;
+static uint8_t HIDUSB_PacketIsCommand(const uint8_t *page) {
+	return (page[0] == 'V' && page[1] == 'C');
 }
 
 enum {
@@ -248,25 +240,17 @@ enum {
 
 void HIDUSB_HandleData(uint8_t *data) {
 	static int state = STATE_INIT;
-	static uint8_t pageData[1024];
+	static uint32_t pagesToFlash;
 	static uint32_t currentPage;
 	static uint32_t currentPageOffset;
-	static uint32_t pagesToFlash;
-
-	uint32_t pageAddress;
-
-	for (size_t i = 0; i < 8; ++i)
-		pageData[currentPageOffset + i] = data[i];
-
-	currentPageOffset += 8;
 
 	if (state == STATE_INIT) {
-		if (currentPageOffset == 128 && HIDUSB_PacketIsCommand(pageData)) {
-			switch (pageData[7]) {
+		if (HIDUSB_PacketIsCommand(data)) {
+			switch (data[2]) {
 			case 0x01:
 				/* Flash */
 				currentPage = MIN_PAGE;
-				pagesToFlash = pageData[8] + 256 * pageData[9];
+				pagesToFlash = data[3] + 256 * data[4];
 				/* Don't allow to pass a ridiculous value. 2 megs max */
 				if (pagesToFlash < 2048) {
 					state = STATE_FLASH;
@@ -282,10 +266,15 @@ void HIDUSB_HandleData(uint8_t *data) {
 			}
 		}
 	} else if (state == STATE_FLASH) {
+		static uint8_t pageData[1024];
+		for (size_t i = 0; i < 8; ++i)
+			pageData[currentPageOffset + i] = data[i];
+		currentPageOffset += 8;
+
 		/* Flashing */
 		if (currentPageOffset == 1024) {
 			/* Received another page */
-			pageAddress = 0x08000000 + (currentPage * 1024);
+			uint32_t pageAddress = 0x08000000 + (currentPage * 1024);
 
 			HIDUSB_FlashUnlock();
 			HIDUSB_FormatFlashPage(pageAddress);
