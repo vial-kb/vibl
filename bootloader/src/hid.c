@@ -21,7 +21,6 @@
 
 #include "usb.h"
 #include "hid.h"
-#include "led.h"
 #include "bitwise.h"
 
 // This should be <= MAX_EP_NUM defined in usb.h
@@ -123,10 +122,6 @@ static const uint8_t usbHidReportDescriptor[32] = {
 };
 
 void HIDUSB_Reset() {
-
-	led_init();
-	led_off();
-
 	_SetBTABLE(BTABLE_ADDRESS);
 
 	/* Initialize Endpoint 0 */

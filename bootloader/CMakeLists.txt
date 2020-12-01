@@ -10,7 +10,6 @@ function(add_bootloader device)
     add_executable(${device}.elf
         src/startup.c
         src/hid.c
-        src/led.c
         src/main.c
         src/usb.c
 
