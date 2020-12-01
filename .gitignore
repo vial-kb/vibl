@@ -1,2 +1,6 @@
 .ccls-cache
 build
+.vscode
+*.o
+hid-flash
+*.bin
