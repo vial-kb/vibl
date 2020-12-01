@@ -17,7 +17,7 @@
  */
 
 #include <stm32f1xx.h>
-#include <string.h>
+#include <stddef.h>
 
 #include "usb.h"
 #include "hid.h"
