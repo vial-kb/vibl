@@ -268,8 +268,10 @@ void HIDUSB_HandleData(uint8_t *data) {
 				currentPage = MIN_PAGE;
 				pagesToFlash = pageData[8] + 256 * pageData[9];
 				/* Don't allow to pass a ridiculous value. 2 megs max */
-				if (pagesToFlash < 2048)
+				if (pagesToFlash < 2048) {
 					state = STATE_FLASH;
+					currentPageOffset = 0;
+				}
 				break;
 			case 0x02:
 				/* Reboot */
@@ -279,7 +281,6 @@ void HIDUSB_HandleData(uint8_t *data) {
 				break;
 			}
 		}
-		currentPageOffset = 0;
 	} else if (state == STATE_FLASH) {
 		/* Flashing */
 		if (currentPageOffset == 1024) {
@@ -296,7 +297,7 @@ void HIDUSB_HandleData(uint8_t *data) {
 		}
 
 		/* Did we flash everything? */
-		if (currentPage == pagesToFlash) {
+		if (currentPage - MIN_PAGE == pagesToFlash) {
 			/* Back to processing commands */
 			state = STATE_INIT;
 		}
