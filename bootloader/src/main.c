@@ -25,16 +25,12 @@
 #include "hid.h"
 #include "bitwise.h"
 #include "config.h"
+#include "boot.h"
 
 typedef void (*funct_ptr)(void);
 
 int want_bootloader(void) {
-	int want = 0;
-    uint32_t user_sp = *(volatile uint32_t *)USER_PROGRAM;
-    if ((user_sp & 0x2FFE0000) != 0x20000000)
-		want |= 1;
-
-	return want;
+	return checkAndClearBootloaderFlag() || checkUserCode() || checkKbMatrix();
 }
 
 /**
@@ -87,6 +83,8 @@ void SystemClock_Config(void)
 
 	/* Update CMSIS variable (which can be updated also through SystemCoreClockUpdate function) */
 	LL_SetSystemCoreClock(72000000);
+
+	RCC->APB2ENR |= 0b111111100;// Enable All GPIO channels (A to G)
 }
 
 int main() {
@@ -94,6 +92,8 @@ int main() {
 	funct_ptr userProgram = (funct_ptr) userProgramAddress;
 
 	SystemClock_Config();
+
+	setupGPIO();
 
 	if(want_bootloader()) {
 		USB_Init(HIDUSB_EPHandler, HIDUSB_Reset);

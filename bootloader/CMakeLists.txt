@@ -9,6 +9,8 @@ function(add_bootloader device)
 
     add_executable(${device}.elf
         src/startup.c
+
+        src/boot.c
         src/hid.c
         src/main.c
         src/usb.c
@@ -23,7 +25,7 @@ function(add_bootloader device)
         -mcpu=cortex-m3
         -fno-strict-aliasing
 
-        -flto
+        -g
         -Os
 
         -Wall
