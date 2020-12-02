@@ -1,0 +1,7 @@
+#pragma once
+
+#ifdef TARGET_GENERIC
+#define VIAL_KEYBOARD_UID {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
+#else
+#error Unknown target
+#endif

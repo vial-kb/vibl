@@ -22,6 +22,7 @@
 #include "usb.h"
 #include "hid.h"
 #include "bitwise.h"
+#include "config.h"
 
 // This should be <= MAX_EP_NUM defined in usb.h
 #define EP_NUM 2
@@ -244,7 +245,7 @@ void HIDUSB_HandleData(uint8_t *data) {
 	static uint32_t currentPage;
 	static uint32_t currentPageOffset;
 
-	static uint8_t keyboard_id[8] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+	static uint8_t keyboard_id[8] = VIAL_KEYBOARD_UID;
 
 	if (state == STATE_INIT) {
 		if (HIDUSB_PacketIsCommand(data)) {
