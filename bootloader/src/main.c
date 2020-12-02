@@ -83,8 +83,6 @@ void SystemClock_Config(void)
 
 	/* Update CMSIS variable (which can be updated also through SystemCoreClockUpdate function) */
 	LL_SetSystemCoreClock(72000000);
-
-	RCC->APB2ENR |= 0b111111100;// Enable All GPIO channels (A to G)
 }
 
 int main() {

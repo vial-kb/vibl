@@ -7,12 +7,12 @@
 
 #define SET_REG(addr,val) do { *(volatile uint32_t*)(addr)=val; } while(0)
 #define GET_REG(addr)     (*(volatile uint32_t*)(addr))
-#define GPIO_BSRR(port) (port+0x10)
-#define GPIO_IDR(port)  (port+0x08)
+#define GPIO_BSRR(port) ((uint32_t)port+0x10)
+#define GPIO_IDR(port)  ((uint32_t)port+0x08)
 #define CR_INPUT_PU_PD      0x08
 #define CR_OUTPUT_PP        0x01
 #define CR_SHITF(pin) ((pin - 8*(pin>7))<<2)
-#define GPIO_CR(port,pin) (port + (0x04*(pin>7)))
+#define GPIO_CR(port,pin) ((uint32_t)port + (0x04*(pin>7)))
 
 // Used to create the control register masking pattern, when setting control register mode.
 static unsigned int crMask(int pin)
@@ -64,9 +64,8 @@ static void gpio_write_bit(uint32_t bank, uint8_t pin, uint8_t val) {
     SET_REG(GPIO_BSRR(bank), (1U << pin) << (16 * val));
 }
 
-static int readPin(uint32_t bank, uint8_t pin) {
-    // todo, implement read
-    if (GET_REG(GPIO_IDR(bank)) & (0x01 << pin)) {
+static int readPin(GPIO_TypeDef *bank, uint8_t pin) {
+    if (bank->IDR & (0x01 << pin)) {
         return 1;
     } else {
         return 0;
@@ -80,9 +79,11 @@ int checkKbMatrix(void) {
 }
 
 void setupGPIO(void) {
-    // SET_REG(AFIO_MAPR,(GET_REG(AFIO_MAPR) & ~AFIO_MAPR_SWJ_CFG) | AFIO_MAPR_SWJ_CFG_NO_JTAG_NO_SW);// Try to disable SWD AND JTAG so we can use those pins (not sure if this works).
+    RCC->APB2ENR |= 0b111111100;// Enable All GPIO channels (A to G)
 
     // setup our two gpios for input and output
     SET_REG(GPIO_CR(BL_INPUT_BANK,BL_INPUT_PIN),(GET_REG(GPIO_CR(BL_INPUT_BANK,BL_INPUT_PIN)) & crMask(BL_INPUT_PIN)) | CR_INPUT_PU_PD << CR_SHITF(BL_INPUT_PIN));
+    // set input pulldown
+    gpio_write_bit(BL_INPUT_BANK, BL_INPUT_PIN, 0);
     SET_REG(GPIO_CR(BL_OUTPUT_BANK,BL_OUTPUT_PIN),(GET_REG(GPIO_CR(BL_OUTPUT_BANK,BL_OUTPUT_PIN)) & crMask(BL_OUTPUT_PIN)) | CR_OUTPUT_PP << CR_SHITF(BL_OUTPUT_PIN));
 }
