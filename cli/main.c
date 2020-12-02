@@ -32,12 +32,9 @@ static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 		if(retval < 0) {
 			usleep(100 * 1000); // No data has been sent here. Delay and retry.
 		} else {
-			printf("retval=%d\n", retval);
 			return 0; // Partial data has been sent. Firmware will be corrupted. Abort process.
 		}
 	}
-
-	printf("retval=%d\n", retval);
 
 	if(retries <= 0) {
 		return 0;
@@ -49,7 +46,6 @@ static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 static int usb_read(hid_device *device, uint8_t *buffer, size_t len) {
 	while (len > 0) {
 		int ret = hid_read(device, buffer, len);
-		printf("hid_read: %d\n", ret);
 		if (ret < 0)
 			return ret;
 		len -= ret;
@@ -65,6 +61,7 @@ int main(int argc, char **argv) {
 	uint8_t hid_buffer[129];
 	uint8_t CMD_FLASH[8] = {'V','C',0x01};
 	uint8_t CMD_REBOOT[8] = {'V','C',0x02};
+	uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x03};
 	hid_device *handle = NULL;
 	size_t read_bytes;
 	FILE *firmware_file = NULL;
@@ -95,22 +92,26 @@ int main(int argc, char **argv) {
 
 	// Send flash command to put HID bootloader in initial stage...
 	memset(hid_buffer, 0, sizeof(hid_buffer));
-	memcpy(&hid_buffer[1], CMD_FLASH, sizeof(CMD_FLASH));
-	hid_buffer[3] = 0x03;
+	memcpy(&hid_buffer[1], CMD_GET_VIAL_ID, sizeof(CMD_GET_VIAL_ID));
 	if(!usb_write(handle, hid_buffer, 9)) {
-		printf("Error while sending get vial ID.\n");
+		printf("Error while asking for Vial ID\n");
 		error = 1;
 		goto exit;
 	}
-	printf("sent!\n");
+
 	error = usb_read(handle, hid_buffer, 8);
-	printf("error=%d\n", error);
-	printf("buffer: %02x %02x %02x %02x %02x %02x %02x %02x\n",
-		hid_buffer[0], hid_buffer[1], hid_buffer[2], hid_buffer[3],
-		hid_buffer[4], hid_buffer[5], hid_buffer[6], hid_buffer[7]);
-	goto exit;
+	if (error != 0) {
+		printf("Error while retrieving Vial ID\n");
+		error = 1;
+		goto exit;
+	}
 
-
+	if (hid_buffer[0] != 0xFF || hid_buffer[1] != 0xFF || hid_buffer[2] != 0xFF || hid_buffer[3] != 0xFF ||
+			hid_buffer[4] != 0xFF || hid_buffer[5] != 0xFF || hid_buffer[6] != 0xFF || hid_buffer[7] != 0xFF) {
+		printf("Unexpected Vial ID\n");
+		error = 1;
+		goto exit;
+	}
 
 	firmware_file = fopen(argv[1], "rb");
 	if(!firmware_file) {
