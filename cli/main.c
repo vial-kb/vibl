@@ -191,7 +191,7 @@ int main(int argc, char **argv) {
 		}
 
 		written += sizeof(page_data);
-		printf("\r[%d/%d]: %d%%", written, firmware_size, 100 * written / firmware_size);
+		printf("\r[%d/%d]: %d%%", (int)written, (int)firmware_size, 100 * (int)written / (int)firmware_size);
 	}
 	printf("\n");
 
