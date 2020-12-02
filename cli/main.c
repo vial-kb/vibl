@@ -60,9 +60,9 @@ int main(int argc, char **argv) {
 	uint8_t page_data[64];
 	uint8_t hid_buffer[129];
 	uint8_t CMD_BOOTLOADER_IDENT[8] = {'V','C',0x00};
-	uint8_t CMD_FLASH[8] = {'V','C',0x01};
-	uint8_t CMD_REBOOT[8] = {'V','C',0x02};
-	uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x03};
+	uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x01};
+	uint8_t CMD_FLASH[8] = {'V','C',0x02};
+	uint8_t CMD_REBOOT[8] = {'V','C',0x03};
 	hid_device *handle = NULL;
 	size_t read_bytes;
 	FILE *firmware_file = NULL;

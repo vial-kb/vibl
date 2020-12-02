@@ -257,6 +257,10 @@ void HIDUSB_HandleData(uint8_t *data) {
 				USB_SendData(ENDP1, bootloader_ident, sizeof(bootloader_ident));
 				break;
 			case 0x01:
+				/* Send vial keyboard ID */
+				USB_SendData(ENDP1, keyboard_id, sizeof(keyboard_id));
+				break;
+			case 0x02:
 				/* Flash */
 				currentPage = 0;
 				pagesToFlash = data[3] + 256 * data[4];
@@ -266,13 +270,9 @@ void HIDUSB_HandleData(uint8_t *data) {
 					currentPageOffset = 0;
 				}
 				break;
-			case 0x02:
+			case 0x03:
 				/* Reboot */
 				NVIC_SystemReset();
-				break;
-			case 0x03:
-				/* Send vial keyboard ID */
-				USB_SendData(ENDP1, keyboard_id, sizeof(keyboard_id));
 				break;
 			default:
 				break;
