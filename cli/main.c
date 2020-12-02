@@ -32,15 +32,32 @@ static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 		if(retval < 0) {
 			usleep(100 * 1000); // No data has been sent here. Delay and retry.
 		} else {
+			printf("retval=%d\n", retval);
 			return 0; // Partial data has been sent. Firmware will be corrupted. Abort process.
 		}
 	}
+
+	printf("retval=%d\n", retval);
 
 	if(retries <= 0) {
 		return 0;
 	}
 
 	return 1;
+}
+
+static int usb_read(hid_device *device, uint8_t *buffer, size_t len) {
+	while (len > 0) {
+		int ret = hid_read(device, buffer, len);
+		printf("hid_read: %d\n", ret);
+		if (ret < 0)
+			return ret;
+		len -= ret;
+		buffer += ret;
+		usleep(100 * 1000);
+	}
+
+	return 0;
 }
 
 int main(int argc, char **argv) {
@@ -75,6 +92,25 @@ int main(int argc, char **argv) {
 		error = 1;
 		goto exit;
 	}
+
+	// Send flash command to put HID bootloader in initial stage...
+	memset(hid_buffer, 0, sizeof(hid_buffer));
+	memcpy(&hid_buffer[1], CMD_FLASH, sizeof(CMD_FLASH));
+	hid_buffer[3] = 0x03;
+	if(!usb_write(handle, hid_buffer, 9)) {
+		printf("Error while sending get vial ID.\n");
+		error = 1;
+		goto exit;
+	}
+	printf("sent!\n");
+	error = usb_read(handle, hid_buffer, 8);
+	printf("error=%d\n", error);
+	printf("buffer: %02x %02x %02x %02x %02x %02x %02x %02x\n",
+		hid_buffer[0], hid_buffer[1], hid_buffer[2], hid_buffer[3],
+		hid_buffer[4], hid_buffer[5], hid_buffer[6], hid_buffer[7]);
+	goto exit;
+
+
 
 	firmware_file = fopen(argv[1], "rb");
 	if(!firmware_file) {

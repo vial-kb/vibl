@@ -244,6 +244,8 @@ void HIDUSB_HandleData(uint8_t *data) {
 	static uint32_t currentPage;
 	static uint32_t currentPageOffset;
 
+	static uint8_t keyboard_id[8] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88 };
+
 	if (state == STATE_INIT) {
 		if (HIDUSB_PacketIsCommand(data)) {
 			switch (data[2]) {
@@ -260,6 +262,10 @@ void HIDUSB_HandleData(uint8_t *data) {
 			case 0x02:
 				/* Reboot */
 				NVIC_SystemReset();
+				break;
+			case 0x03:
+				/* Send vial keyboard ID */
+				USB_SendData(ENDP1, keyboard_id, sizeof(keyboard_id));
 				break;
 			default:
 				break;
@@ -373,6 +379,10 @@ void HIDUSB_EPHandler(uint16_t Status) {
 
 		_SetEPTxValid(EPn);
 		_ClearEP_CTR_TX(EPn);
+
+		if (EPn == ENDP1) {
+			_SetEPTxStatus(ENDP1, EP_TX_NAK);
+		}
 	}
 }
 
