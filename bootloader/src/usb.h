@@ -27,7 +27,7 @@
 
 typedef struct {
 	uint16_t RXB[MAX_BUFFER_SIZE / 2];
-	uint16_t *TXB;
+	const void *TXB;
 	uint8_t RXL;
 	uint8_t TXL;
 	uint8_t MaxPacketSize;
@@ -723,7 +723,7 @@ void USB_Init(void (*EPHandlerPtr)(uint16_t), void (*ResetHandlerPtr)(void));
 void USB_Shutdown();
 void USB_PMA2Buffer(uint8_t EPn);
 void USB_Buffer2PMA(uint8_t EPn);
-void USB_SendData(uint8_t EPn, uint16_t *Data, uint16_t Length);
+void USB_SendData(uint8_t EPn, const void *Data, uint16_t Length);
 uint16_t USB_IsDeviceConfigured();
 
 #endif /* USB_H_ */

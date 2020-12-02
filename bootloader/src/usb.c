@@ -65,15 +65,17 @@ void USB_Buffer2PMA(uint8_t EPn) {
 	Destination = (uint32_t *) (PMAAddr + _GetEPTxAddr(EPn) * 2);
 
 	for (uint8_t i = 0; i < (Count + 1) / 2; i++) {
-		*(uint32_t *) Destination = *(uint16_t *) RxTxBuffer[EPn].TXB;
+		const uint8_t *buf = RxTxBuffer[EPn].TXB;
+		uint16_t tmp = buf[0] | (buf[1] << 8);
+		*(uint32_t *) Destination = tmp;
 		Destination++;
-		RxTxBuffer[EPn].TXB++;
+		RxTxBuffer[EPn].TXB = buf + 2;
 	}
 
 	RxTxBuffer[EPn].TXL -= Count;
 }
 
-void USB_SendData(uint8_t EPn, uint16_t *Data, uint16_t Length) {
+void USB_SendData(uint8_t EPn, const void *Data, uint16_t Length) {
 
 	if (EPn > 0 && !DeviceConfigured) {
 		return;

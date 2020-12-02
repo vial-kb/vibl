@@ -30,8 +30,6 @@
 // First page to be occupied by the user program
 #define MIN_PAGE 4
 
-static uint8_t CMD_SIGNATURE[] = {'B','T','L','D','C','M','D'};
-
 extern volatile uint8_t DeviceAddress;
 extern volatile uint16_t DeviceConfigured, DeviceStatus;
 
@@ -152,19 +150,19 @@ void HIDUSB_GetDescriptor(USB_SetupPacket *SPacket) {
 
 	switch (SPacket->wValue.H) {
 		case USB_DEVICE_DESC_TYPE:
-			USB_SendData(0, (uint16_t *) USB_DEVICE_DESC,
+			USB_SendData(0, USB_DEVICE_DESC,
 					SPacket->wLength > sizeof(USB_DEVICE_DESC) ?
 							sizeof(USB_DEVICE_DESC) : SPacket->wLength);
 			break;
 
 		case USB_CFG_DESC_TYPE:
-			USB_SendData(0, (uint16_t *) USBD_DEVICE_CFG_DESCRIPTOR,
+			USB_SendData(0, USBD_DEVICE_CFG_DESCRIPTOR,
 					SPacket->wLength > sizeof(USBD_DEVICE_CFG_DESCRIPTOR) ?
 							sizeof(USBD_DEVICE_CFG_DESCRIPTOR) : SPacket->wLength);
 			break;
 
 		case USB_REPORT_DESC_TYPE:
-			USB_SendData(0, (uint16_t *) usbHidReportDescriptor,
+			USB_SendData(0, usbHidReportDescriptor,
 					SPacket->wLength > sizeof(usbHidReportDescriptor) ?
 							sizeof(usbHidReportDescriptor) : SPacket->wLength);
 			break;
@@ -173,12 +171,12 @@ void HIDUSB_GetDescriptor(USB_SetupPacket *SPacket) {
 
 			switch (SPacket->wValue.L) {
 			case 0x00:
-				USB_SendData(0, (uint16_t *) sdLangID,
+				USB_SendData(0, sdLangID,
 						SPacket->wLength > sizeof(sdLangID) ?
 								sizeof(sdLangID) : SPacket->wLength);
 				break;
 			case 0x01:
-				USB_SendData(0, (uint16_t *) sdProduct,
+				USB_SendData(0, sdProduct,
 						SPacket->wLength > sizeof(sdProduct) ?
 								sizeof(sdProduct) : SPacket->wLength);
 				break;
@@ -222,7 +220,8 @@ static void HIDUSB_WriteFlash(uint32_t page, uint8_t *data, uint16_t size) {
 	bit_set(FLASH->CR, FLASH_CR_PG);
 
 	for(uint16_t i = 0; i < size; i += 2) {
-		*(volatile uint16_t *)(page + i) = *(uint16_t *)(data + i);
+		uint16_t tmp = data[i] | (data[i + 1] << 8);
+		*(volatile uint16_t *)(page + i) = tmp;
 
 		while(FLASH->SR & FLASH_SR_BSY);
 	}
@@ -388,5 +387,7 @@ void HIDUSB_EPHandler(uint16_t Status) {
 }
 
 __attribute__((weak)) void HIDUSB_DataReceivedHandler(uint16_t *Data, uint16_t Length) {
+	(void)Data;
+	(void)Length;
 }
 
