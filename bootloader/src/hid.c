@@ -53,8 +53,8 @@ static const uint8_t USB_DEVICE_DESC[] = {
 	0x00,        // bDeviceSubClass
 	0x00,        // bDeviceProtocol
 	0x08,        // bMaxPacketSize0 8
-	0x09, 0x12,  // idVendor 0x1209
-	0xBE, 0xBA,  // idProduct 0xBABE
+	0x34, 0x12,  // idVendor 0x1234
+	0x58, 0x56,  // idProduct 0x5678
 	0x01, 0x00,  // bcdDevice 0.01
 	0x00,        // iManufacturer (String Index)
 	0x01,        // iProduct (String Index)
