@@ -295,7 +295,7 @@ void HIDUSB_HandleData(uint8_t *data) {
 
 			HIDUSB_FlashUnlock();
 			/* If we're at page boundary, we have to erase this page */
-			if ((pageAddress & 0xFFF) == 0)
+			if ((pageAddress & 0x3FF) == 0)
 				HIDUSB_FormatFlashPage(pageAddress);
 			/* Then proceed to write the data */
 			HIDUSB_WriteFlash(pageAddress, pageData, sizeof(pageData));
