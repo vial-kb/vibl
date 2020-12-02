@@ -24,9 +24,7 @@
 #include "usb.h"
 #include "hid.h"
 #include "bitwise.h"
-
-// HID Bootloader takes 4K
-#define USER_PROGRAM 0x08001000
+#include "config.h"
 
 typedef void (*funct_ptr)(void);
 

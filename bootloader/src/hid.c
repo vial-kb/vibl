@@ -27,9 +27,6 @@
 // This should be <= MAX_EP_NUM defined in usb.h
 #define EP_NUM 2
 
-// First page to be occupied by the user program
-#define MIN_PAGE 4
-
 extern volatile uint8_t DeviceAddress;
 extern volatile uint16_t DeviceConfigured, DeviceStatus;
 
@@ -244,6 +241,9 @@ void HIDUSB_HandleData(uint8_t *data) {
 	static uint32_t currentPage;
 	static uint32_t currentPageOffset;
 
+	/* Will flash 64 bytes at a time */
+	static uint8_t pageData[64];
+
 	static uint8_t keyboard_id[8] = VIAL_KEYBOARD_UID;
 
 	if (state == STATE_INIT) {
@@ -251,10 +251,10 @@ void HIDUSB_HandleData(uint8_t *data) {
 			switch (data[2]) {
 			case 0x01:
 				/* Flash */
-				currentPage = MIN_PAGE;
+				currentPage = 0;
 				pagesToFlash = data[3] + 256 * data[4];
-				/* Don't allow to pass a ridiculous value. 2 megs max */
-				if (pagesToFlash < 2048) {
+				/* Don't allow to pass a ridiculous value. 10 megs max */
+				if (pagesToFlash < 10 * 1024 * 1024 / sizeof(pageData)) {
 					state = STATE_FLASH;
 					currentPageOffset = 0;
 				}
@@ -272,19 +272,21 @@ void HIDUSB_HandleData(uint8_t *data) {
 			}
 		}
 	} else if (state == STATE_FLASH) {
-		static uint8_t pageData[1024];
 		for (size_t i = 0; i < 8; ++i)
 			pageData[currentPageOffset + i] = data[i];
 		currentPageOffset += 8;
 
 		/* Flashing */
-		if (currentPageOffset == 1024) {
+		if (currentPageOffset == sizeof(pageData)) {
 			/* Received another page */
-			uint32_t pageAddress = 0x08000000 + (currentPage * 1024);
+			uint32_t pageAddress = USER_PROGRAM + (currentPage * sizeof(pageData));
 
 			HIDUSB_FlashUnlock();
-			HIDUSB_FormatFlashPage(pageAddress);
-			HIDUSB_WriteFlash(pageAddress, pageData, 1024);
+			/* If we're at page boundary, we have to erase this page */
+			if ((pageAddress & 0xFFF) == 0)
+				HIDUSB_FormatFlashPage(pageAddress);
+			/* Then proceed to write the data */
+			HIDUSB_WriteFlash(pageAddress, pageData, sizeof(pageData));
 			HIDUSB_FlashLock();
 
 			currentPage++;
@@ -292,7 +294,7 @@ void HIDUSB_HandleData(uint8_t *data) {
 		}
 
 		/* Did we flash everything? */
-		if (currentPage - MIN_PAGE == pagesToFlash) {
+		if (currentPage == pagesToFlash) {
 			/* Back to processing commands */
 			state = STATE_INIT;
 		}

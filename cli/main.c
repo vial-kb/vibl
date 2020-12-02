@@ -57,7 +57,7 @@ static int usb_read(hid_device *device, uint8_t *buffer, size_t len) {
 }
 
 int main(int argc, char **argv) {
-	uint8_t page_data[1024];
+	uint8_t page_data[64];
 	uint8_t hid_buffer[129];
 	uint8_t CMD_FLASH[8] = {'V','C',0x01};
 	uint8_t CMD_REBOOT[8] = {'V','C',0x02};
@@ -123,9 +123,9 @@ int main(int argc, char **argv) {
 	fseek(firmware_file, 0, SEEK_END);
 	/* Get firmware size and number of pages */
 	firmware_size = ftell(firmware_file);
-	if (firmware_size % 1024 != 0)
-		firmware_size += 1024 - firmware_size % 1024;
-	firmware_pages = firmware_size / 1024;
+	if (firmware_size % sizeof(page_data) != 0)
+		firmware_size += sizeof(page_data) - firmware_size % sizeof(page_data);
+	firmware_pages = firmware_size / sizeof(page_data);
 
 	// Send flash command to put HID bootloader in initial stage...
 	memset(hid_buffer, 0, sizeof(hid_buffer));
@@ -154,16 +154,13 @@ int main(int argc, char **argv) {
 	read_bytes = fread(page_data, 1, sizeof(page_data), firmware_file);
 
 	while(read_bytes > 0) {
+		memcpy(&hid_buffer[1], page_data, sizeof(page_data));
 
-		for(int i = 0; i < 1024; i += 128) {
-			memcpy(&hid_buffer[1], page_data + i, 128);
-
-			// Flash is unavailable when writing to it, so USB interrupt may fail here
-			if(!usb_write(handle, hid_buffer, 129)) {
-				printf("Error while flashing firmware data.\n");
-				error = 1;
-				goto exit;
-			}
+		// Flash is unavailable when writing to it, so USB interrupt may fail here
+		if(!usb_write(handle, hid_buffer, 1 + sizeof(page_data))) {
+			printf("Error while flashing firmware data.\n");
+			error = 1;
+			goto exit;
 		}
 
 		memset(page_data, 0, sizeof(page_data));
