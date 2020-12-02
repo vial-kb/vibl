@@ -59,6 +59,7 @@ static int usb_read(hid_device *device, uint8_t *buffer, size_t len) {
 int main(int argc, char **argv) {
 	uint8_t page_data[64];
 	uint8_t hid_buffer[129];
+	uint8_t CMD_BOOTLOADER_IDENT[8] = {'V','C',0x00};
 	uint8_t CMD_FLASH[8] = {'V','C',0x01};
 	uint8_t CMD_REBOOT[8] = {'V','C',0x02};
 	uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x03};
@@ -90,7 +91,28 @@ int main(int argc, char **argv) {
 		goto exit;
 	}
 
-	// Send flash command to put HID bootloader in initial stage...
+	// Identify bootloader version and feature flags
+	memset(hid_buffer, 0, sizeof(hid_buffer));
+	memcpy(&hid_buffer[1], CMD_BOOTLOADER_IDENT, sizeof(CMD_BOOTLOADER_IDENT));
+	if(!usb_write(handle, hid_buffer, 9)) {
+		printf("Error while asking for bootloader ident\n");
+		error = 1;
+		goto exit;
+	}
+
+	error = usb_read(handle, hid_buffer, 8);
+	if (error != 0) {
+		printf("Error while retrieving bootloader ident\n");
+		error = 1;
+		goto exit;
+	}
+	if (hid_buffer[0] != 0) {
+		printf("Error: unsupported bootloader version: %d\n", hid_buffer[0]);
+		error = 1;
+		goto exit;
+	}
+
+	// Get keyboard ID
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 	memcpy(&hid_buffer[1], CMD_GET_VIAL_ID, sizeof(CMD_GET_VIAL_ID));
 	if(!usb_write(handle, hid_buffer, 9)) {

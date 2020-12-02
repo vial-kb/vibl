@@ -246,9 +246,16 @@ void HIDUSB_HandleData(uint8_t *data) {
 
 	static uint8_t keyboard_id[8] = VIAL_KEYBOARD_UID;
 
+	/* TODO: bump first byte (version) to 1 before release */
+	static uint8_t bootloader_ident[8] = { 0 };
+
 	if (state == STATE_INIT) {
 		if (HIDUSB_PacketIsCommand(data)) {
 			switch (data[2]) {
+			case 0x00:
+				/* Retrieve bootloader version, flags */
+				USB_SendData(ENDP1, bootloader_ident, sizeof(bootloader_ident));
+				break;
 			case 0x01:
 				/* Flash */
 				currentPage = 0;
