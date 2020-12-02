@@ -150,10 +150,15 @@ int main(int argc, char **argv) {
 	// Send Firmware File data
 	printf("Flashing firmware...\n");
 
-	memset(page_data, 0, sizeof(page_data));
-	read_bytes = fread(page_data, 1, sizeof(page_data), firmware_file);
+	size_t written = 0;
 
-	while(read_bytes > 0) {
+	while (1) {
+		memset(page_data, 0, sizeof(page_data));
+		read_bytes = fread(page_data, 1, sizeof(page_data), firmware_file);
+
+		if (read_bytes <= 0)
+			break;
+
 		memcpy(&hid_buffer[1], page_data, sizeof(page_data));
 
 		// Flash is unavailable when writing to it, so USB interrupt may fail here
@@ -163,9 +168,10 @@ int main(int argc, char **argv) {
 			goto exit;
 		}
 
-		memset(page_data, 0, sizeof(page_data));
-		read_bytes = fread(page_data, 1, sizeof(page_data), firmware_file);
+		written += sizeof(page_data);
+		printf("\r[%d/%d]: %d%%", written, firmware_size, 100 * written / firmware_size);
 	}
+	printf("\n");
 
 	printf("Rebooting...\n");
 	/* Reboot */
