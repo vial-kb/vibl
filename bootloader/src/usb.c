@@ -30,11 +30,17 @@ void (*_EPHandler)(uint16_t) = NULL;
 void (*_USBResetHandler)(void) = NULL;
 
 const uint8_t sdProduct[] = {
-	0x2C, // Size,
+	0x18, // Size,
 	0x03, // Descriptor type
-	'S', 0, 'T', 0, 'M', 0, '3', 0, '2', 0, 'F', 0, ' ', 0, 'H', 0, 'I', 0,
-	'D', 0, ' ', 0, 'B', 0, 'o', 0, 'o', 0, 't', 0, 'l', 0, 'o', 0, 'a', 0,
-	'd', 0, 'e', 0, 'r', 0
+	'v', 0, 'i', 0, 'b', 0, 'l', 0, '-', 0,
+	'H', 0, 'I', 0, 'D', 0, 'U', 0, 'S', 0, 'B', 0,
+};
+
+const uint8_t sdSerial[] = {
+	0x1C, // Size,
+	0x03, // Descriptor type
+	'v', 0, 'i', 0, 'b', 0, 'l', 0, ':', 0,
+	'd', 0, '4', 0, 'f', 0, '8', 0, '1', 0, '5', 0, '9', 0, 'c', 0,
 };
 
 const uint8_t sdLangID[] = {
