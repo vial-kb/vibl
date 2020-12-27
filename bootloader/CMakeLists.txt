@@ -61,3 +61,4 @@ function(add_bootloader device)
 endfunction(add_bootloader)
 
 add_bootloader(generic)
+add_bootloader(vial_test)
