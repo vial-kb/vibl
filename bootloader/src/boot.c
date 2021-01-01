@@ -8,7 +8,6 @@
 #define SET_REG(addr,val) do { *(volatile uint32_t*)(addr)=val; } while(0)
 #define GET_REG(addr)     (*(volatile uint32_t*)(addr))
 #define GPIO_BSRR(port) ((uint32_t)port+0x10)
-#define GPIO_IDR(port)  ((uint32_t)port+0x08)
 #define CR_INPUT_PU_PD      0x08
 #define CR_OUTPUT_PP        0x01
 #define CR_SHITF(pin) ((pin - 8*(pin>7))<<2)
@@ -59,31 +58,25 @@ int checkAndClearBootloaderFlag(void) {
     return flag;
 }
 
-static void gpio_write_bit(uint32_t bank, uint8_t pin, uint8_t val) {
-    val = !val;          // "set" bits are lower than "reset" bits
-    SET_REG(GPIO_BSRR(bank), (1U << pin) << (16 * val));
-}
-
-static int readPin(GPIO_TypeDef *bank, uint8_t pin) {
-    if (bank->IDR & (0x01 << pin)) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
 int checkKbMatrix(void) {
-    gpio_write_bit(BL_OUTPUT_BANK, BL_OUTPUT_PIN, 1);
+    /* output 1 on output_pin */
+    BL_OUTPUT_BANK->BSRR = (1U << BL_OUTPUT_PIN);
+
+    /* delay for change to propagate */
     for (volatile int delay = 0; delay < 1000; ++delay) {}
-    return readPin(BL_INPUT_BANK, BL_INPUT_PIN);
+
+    /* read and check input_pin */
+    return !!(BL_INPUT_BANK->IDR & (1U << BL_INPUT_PIN));
 }
 
 void setupGPIO(void) {
-    RCC->APB2ENR |= 0b111111100;// Enable All GPIO channels (A to G)
+    /* Enable All GPIO channels (A to G) */
+    RCC->APB2ENR |= 0b111111100;
 
-    // setup our two gpios for input and output
+    /* Set (BL_INPUT_BANK,BL_INPUT_PIN) as pulldown input */
     SET_REG(GPIO_CR(BL_INPUT_BANK,BL_INPUT_PIN),(GET_REG(GPIO_CR(BL_INPUT_BANK,BL_INPUT_PIN)) & crMask(BL_INPUT_PIN)) | CR_INPUT_PU_PD << CR_SHITF(BL_INPUT_PIN));
-    // set input pulldown
-    gpio_write_bit(BL_INPUT_BANK, BL_INPUT_PIN, 0);
+    BL_INPUT_BANK->BRR = (1U << BL_INPUT_PIN);
+
+    /* Set (BL_OUTPUT_BANK,BL_OUTPUT_PIN) as output */
     SET_REG(GPIO_CR(BL_OUTPUT_BANK,BL_OUTPUT_PIN),(GET_REG(GPIO_CR(BL_OUTPUT_BANK,BL_OUTPUT_PIN)) & crMask(BL_OUTPUT_PIN)) | CR_OUTPUT_PP << CR_SHITF(BL_OUTPUT_PIN));
 }
