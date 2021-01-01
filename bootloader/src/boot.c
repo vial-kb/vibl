@@ -25,17 +25,35 @@ int checkAndClearBootloaderFlag(void) {
         flag = 1;
     }
 
-    // Disable backup register write protection
-    PWR->CR |= PWR_CR_DBP;
-    // store value in pBK DR10
-    BKP->DR10 = 0;
-    // Re-enable backup register write protection
-    PWR->CR &=~ PWR_CR_DBP;
+    /* clear the flag unless it is set to RTC_INSECURE_FLAG (as we want qmk to read that one) */
+    if (BKP->DR10 != RTC_INSECURE_FLAG) {
+        // Disable backup register write protection
+        PWR->CR |= PWR_CR_DBP;
+        // store value in pBK DR10
+        BKP->DR10 = 0;
+        // Re-enable backup register write protection
+        PWR->CR &=~ PWR_CR_DBP;
+    }
 
     // Disable clocks
     RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
 
     return flag;
+}
+
+void setInsecureFlag(void) {
+    // Enable clocks for the backup domain registers
+    RCC->APB1ENR |= (RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
+
+    // Disable backup register write protection
+    PWR->CR |= PWR_CR_DBP;
+    // store value in pBK DR10
+    BKP->DR10 = RTC_INSECURE_FLAG;
+    // Re-enable backup register write protection
+    PWR->CR &=~ PWR_CR_DBP;
+
+    // Disable clocks
+    RCC->APB1ENR &= ~(RCC_APB1ENR_PWREN | RCC_APB1ENR_BKPEN);
 }
 
 int checkKbMatrix(void) {

@@ -22,6 +22,7 @@
 #include "usb.h"
 #include "hid.h"
 #include "bitwise.h"
+#include "boot.h"
 #include "config.h"
 
 // This should be <= MAX_EP_NUM defined in usb.h
@@ -278,6 +279,10 @@ void HIDUSB_HandleData(uint8_t *data) {
 			case 0x03:
 				/* Reboot */
 				NVIC_SystemReset();
+				break;
+			case 0x04:
+				/* set insecure so that on first boot we can restore layout */
+				setInsecureFlag();
 				break;
 			default:
 				break;

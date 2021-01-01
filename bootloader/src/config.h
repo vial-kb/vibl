@@ -3,7 +3,8 @@
 // HID Bootloader takes 4K
 #define USER_PROGRAM 0x08001000
 
-#define RTC_BOOTLOADER_FLAG 0x424C
+#define RTC_BOOTLOADER_FLAG 0x7662 /* Flag whether to jump into bootloader, "vb" */
+#define RTC_INSECURE_FLAG 0x4953 /* Flag to indicate qmk that we want to boot into insecure mode, "IS" */
 
 #if defined(TARGET_GENERIC)
 #define VIAL_KEYBOARD_UID {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
