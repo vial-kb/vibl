@@ -27,6 +27,7 @@ function(add_bootloader device)
 
         -g
         -Os
+        -flto
 
         -Wall
         -Wextra
