@@ -13,10 +13,17 @@ else
 		SOURCES+=hid-mac.c
 		LIBS=-framework IOKit -framework CoreFoundation
 	else
-		SOURCES+=hid-libusb.c
-		LIBS=`pkg-config libusb-1.0 --libs` -lrt -lpthread
-		INCLUDE_DIRS+=`pkg-config libusb-1.0 --cflags`
-		CFLAGS+=-std=gnu99
+		ifeq ($(UNAME_S),Linux)
+			SOURCES+=hid-hidraw.c
+			LIBS=`pkg-config libudev --libs` -lrt -lpthread
+			INCLUDE_DIRS+=`pkg-config libudev --cflags`
+			CFLAGS+=-std=gnu99
+		else
+			SOURCES+=hid-libusb.c
+			LIBS=`pkg-config libusb-1.0 --libs` -lrt -lpthread
+			INCLUDE_DIRS+=`pkg-config libusb-1.0 --cflags`
+			CFLAGS+=-std=gnu99
+		endif
     endif
 endif
 
