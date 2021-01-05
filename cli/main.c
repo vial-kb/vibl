@@ -23,6 +23,10 @@
 #include <stdint.h>
 
 #include "hidapi.h"
+#include "sha256.h"
+
+#define VIAL_ID_SIZE 8
+#define FLASH_PAGE_SIZE 64
 
 static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 	int retries = 20;
@@ -56,18 +60,34 @@ static int usb_read(hid_device *device, uint8_t *buffer, size_t len) {
 	return 0;
 }
 
+/* calculate sha256 hash of the data and check that it matches the recorded hash; returns 0 if check passed, 1 otherwise */
+int check_hash(void *data, size_t size, void *hash) {
+	uint8_t calculated[32];
+	SHA256_CTX ctx;
+	sha256_init(&ctx);
+	sha256_update(&ctx, data, size);
+	sha256_final(&ctx, calculated);
+	return memcmp(calculated, hash, sizeof(calculated)) != 0;
+}
+
+/* searches for a compatible vial device in infinite loop */
+hid_device *search_device(void *vial_uid) {
+	return hid_open(0x1234, 0x5678, NULL);
+}
+
 int main(int argc, char **argv) {
-	uint8_t page_data[64];
 	uint8_t hid_buffer[129];
 	uint8_t CMD_BOOTLOADER_IDENT[8] = {'V','C',0x00};
 	uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x01};
 	uint8_t CMD_FLASH[8] = {'V','C',0x02};
 	uint8_t CMD_REBOOT[8] = {'V','C',0x03};
 	hid_device *handle = NULL;
-	size_t read_bytes;
 	FILE *firmware_file = NULL;
+	void *file_buffer = NULL;
+	void *firmware_buffer = NULL;
+	void *vial_id = NULL;
 	int error = 0;
-	long firmware_size;
+	long file_size, firmware_size;
 	int firmware_pages;
 
 	setbuf(stdout, NULL);
@@ -83,7 +103,55 @@ int main(int argc, char **argv) {
 
 	hid_init();
 
-	handle = hid_open(0x1234, 0x5678, NULL);
+	firmware_file = fopen(argv[1], "rb");
+	if(!firmware_file) {
+		printf("Error opening firmware file: %s\n", argv[1]);
+		error = 1;
+		goto exit;
+	}
+
+	/* Get firmware size */
+	fseek(firmware_file, 0, SEEK_END);
+	file_size = ftell(firmware_file);
+	fseek(firmware_file, 0, SEEK_SET);
+
+	if (file_size < 64) {
+		printf("Firmware file is too small to be valid!\n");
+		error = 1;
+		goto exit;
+	}
+
+	/* Load firmware into memory */
+	if (!(file_buffer = malloc(file_size))) {
+		printf("Failed to allocate memory for firmware data.\n");
+		error = 1;
+		goto exit;
+	}
+
+	if (fread(file_buffer, 1, file_size, firmware_file) != file_size) {
+		printf("Failed to read the firmware.\n");
+		error = 1;
+		goto exit;
+	}
+
+	if (memcmp(file_buffer, "VIALFW00", 8) == 0) {
+		/* is this a vial firmware package? if so, check hash and keep track of vial UID */
+		vial_id = (char*)file_buffer + 8;
+		firmware_buffer = (char*)file_buffer + 64;
+		firmware_size = file_size - 64;
+		if (check_hash(firmware_buffer, firmware_size, (char*)file_buffer + 32)) {
+			printf("Firmware doesn't pass hash check. The file is corrupt.\n");
+			error = 1;
+			goto exit;
+		}
+	} else {
+		/* otherwise it's a plain bin containing the entire firmware package */
+		firmware_buffer = file_buffer;
+		firmware_size = file_size;
+		printf("\nWARNING: flashing a plain binary firmware. This is not recommended, please switch to the .vfw format!\n\n\n");
+	}
+
+	handle = search_device(vial_id);
 
 	if (!handle) {
 		printf("Unable to open device.\n");
@@ -128,26 +196,15 @@ int main(int argc, char **argv) {
 		goto exit;
 	}
 
-	if (hid_buffer[0] != 0xFF || hid_buffer[1] != 0xFF || hid_buffer[2] != 0xFF || hid_buffer[3] != 0xFF ||
-			hid_buffer[4] != 0xFF || hid_buffer[5] != 0xFF || hid_buffer[6] != 0xFF || hid_buffer[7] != 0xFF) {
+	if (vial_id && memcmp(vial_id, hid_buffer, VIAL_ID_SIZE) != 0) {
 		printf("Unexpected Vial ID\n");
 		error = 1;
 		goto exit;
 	}
 
-	firmware_file = fopen(argv[1], "rb");
-	if(!firmware_file) {
-		printf("Error opening firmware file: %s\n", argv[1]);
-		error = 1;
-		goto exit;
-	}
-
-	fseek(firmware_file, 0, SEEK_END);
-	/* Get firmware size and number of pages */
-	firmware_size = ftell(firmware_file);
-	if (firmware_size % sizeof(page_data) != 0)
-		firmware_size += sizeof(page_data) - firmware_size % sizeof(page_data);
-	firmware_pages = firmware_size / sizeof(page_data);
+	if (firmware_size % FLASH_PAGE_SIZE != 0)
+		firmware_size += FLASH_PAGE_SIZE - firmware_size % FLASH_PAGE_SIZE;
+	firmware_pages = firmware_size / FLASH_PAGE_SIZE;
 
 	// Send flash command to put HID bootloader in initial stage...
 	memset(hid_buffer, 0, sizeof(hid_buffer));
@@ -167,30 +224,28 @@ int main(int argc, char **argv) {
 
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 
-	fseek(firmware_file, 0, SEEK_SET);
-
 	// Send Firmware File data
 	printf("Flashing firmware...\n");
 
 	size_t written = 0;
+	void *buf = firmware_buffer;
 
-	while (1) {
-		memset(page_data, 0, sizeof(page_data));
-		read_bytes = fread(page_data, 1, sizeof(page_data), firmware_file);
+	while (written < firmware_size) {
+		size_t chunk_sz = FLASH_PAGE_SIZE;
+		if (chunk_sz > firmware_size - written)
+			chunk_sz = firmware_size - written;
 
-		if (read_bytes <= 0)
-			break;
-
-		memcpy(&hid_buffer[1], page_data, sizeof(page_data));
+		memcpy(&hid_buffer[1], buf, chunk_sz);
 
 		// Flash is unavailable when writing to it, so USB interrupt may fail here
-		if(!usb_write(handle, hid_buffer, 1 + sizeof(page_data))) {
+		if(!usb_write(handle, hid_buffer, 1 + FLASH_PAGE_SIZE)) {
 			printf("Error while flashing firmware data.\n");
 			error = 1;
 			goto exit;
 		}
 
-		written += sizeof(page_data);
+		written += chunk_sz;
+		buf = (char*)buf + chunk_sz;
 		printf("\r[%d/%d]: %d%%", (int)written, (int)firmware_size, 100 * (int)written / (int)firmware_size);
 	}
 	printf("\n");
@@ -213,6 +268,10 @@ int main(int argc, char **argv) {
 
 	if(firmware_file) {
 		fclose(firmware_file);
+	}
+
+	if (file_buffer) {
+		free(file_buffer);
 	}
 
 	return error;

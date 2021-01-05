@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-c -Wall
 LDFLAGS=
-SOURCES=main.c
+SOURCES=main.c sha256.c
 INCLUDE_DIRS=-I .
 
 ifeq ($(OS),Windows_NT)
