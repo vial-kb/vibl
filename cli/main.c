@@ -28,6 +28,11 @@
 #define VIAL_ID_SIZE 8
 #define FLASH_PAGE_SIZE 64
 
+static const uint8_t CMD_BOOTLOADER_IDENT[8] = {'V','C',0x00};
+static const uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x01};
+static const uint8_t CMD_FLASH[8] = {'V','C',0x02};
+static const uint8_t CMD_REBOOT[8] = {'V','C',0x03};
+
 static int usb_write(hid_device *device, uint8_t *buffer, int len) {
 	int retries = 20;
 	int retval;
@@ -70,17 +75,86 @@ int check_hash(void *data, size_t size, void *hash) {
 	return memcmp(calculated, hash, sizeof(calculated)) != 0;
 }
 
+#define NON_SILENT if (!silent)
+
+/* return 0 if all checks pass and device matches */
+int check_vial_uid(hid_device *dev, void *vial_id, int silent) {
+	uint8_t hid_buffer[129];
+
+	/* get bootloader version and feature flags */
+	memset(hid_buffer, 0, sizeof(hid_buffer));
+	memcpy(&hid_buffer[1], CMD_BOOTLOADER_IDENT, sizeof(CMD_BOOTLOADER_IDENT));
+	if(!usb_write(dev, hid_buffer, 9)) {
+		NON_SILENT printf("Error while asking for bootloader ident\n");
+		return 1;
+	}
+
+	if (usb_read(dev, hid_buffer, 8) != 0) {
+		NON_SILENT printf("Error while retrieving bootloader ident\n");
+		return 1;
+	}
+
+	/* check supported bootloader version */
+	if (hid_buffer[0] != 0) {
+		NON_SILENT printf("Error: unsupported bootloader version: %d\n", hid_buffer[0]);
+		return 1;
+	}
+
+	/* get keyboard ID */
+	memset(hid_buffer, 0, sizeof(hid_buffer));
+	memcpy(&hid_buffer[1], CMD_GET_VIAL_ID, sizeof(CMD_GET_VIAL_ID));
+	if(!usb_write(dev, hid_buffer, 9)) {
+		NON_SILENT printf("Error while asking for Vial ID\n");
+		return 1;
+	}
+
+	if (usb_read(dev, hid_buffer, 8) != 0) {
+		NON_SILENT printf("Error while retrieving Vial ID\n");
+		return 1;
+	}
+
+	if (vial_id && memcmp(vial_id, hid_buffer, VIAL_ID_SIZE) != 0) {
+		NON_SILENT printf("Error: Vial UID does not match\n");
+		return 1;
+	}
+
+	return 0;
+}
+
 /* searches for a compatible vial device in infinite loop */
 hid_device *search_device(void *vial_uid) {
-	return hid_open(0x1234, 0x5678, NULL);
+	hid_device *found = NULL;
+
+	while (1) {
+		struct hid_device_info *devs;
+
+		printf("Looking for devices...\n");
+
+		devs = hid_enumerate(0, 0);
+		for (struct hid_device_info *dev = devs; dev; dev = dev->next) {
+			if (dev->serial_number && wcsstr(dev->serial_number, L"vibl:d4f8159c")) {
+				/* ok got a potential vibl candidate. now check if UID is what we're expecting */
+				found = hid_open_path(dev->path);
+
+				if (check_vial_uid(found, vial_uid, 1)) {
+					/* didn't match, discard this device and try another */
+					hid_close(found);
+					found = NULL;
+				}
+			}
+		}
+
+		hid_free_enumeration(devs);
+
+		if (found)
+			return found;
+
+		sleep(1);
+	}
 }
 
 int main(int argc, char **argv) {
 	uint8_t hid_buffer[129];
-	uint8_t CMD_BOOTLOADER_IDENT[8] = {'V','C',0x00};
-	uint8_t CMD_GET_VIAL_ID[8] = {'V','C',0x01};
-	uint8_t CMD_FLASH[8] = {'V','C',0x02};
-	uint8_t CMD_REBOOT[8] = {'V','C',0x03};
 	hid_device *handle = NULL;
 	FILE *firmware_file = NULL;
 	void *file_buffer = NULL;
@@ -159,45 +233,8 @@ int main(int argc, char **argv) {
 		goto exit;
 	}
 
-	// Identify bootloader version and feature flags
-	memset(hid_buffer, 0, sizeof(hid_buffer));
-	memcpy(&hid_buffer[1], CMD_BOOTLOADER_IDENT, sizeof(CMD_BOOTLOADER_IDENT));
-	if(!usb_write(handle, hid_buffer, 9)) {
-		printf("Error while asking for bootloader ident\n");
-		error = 1;
-		goto exit;
-	}
-
-	error = usb_read(handle, hid_buffer, 8);
-	if (error != 0) {
-		printf("Error while retrieving bootloader ident\n");
-		error = 1;
-		goto exit;
-	}
-	if (hid_buffer[0] != 0) {
-		printf("Error: unsupported bootloader version: %d\n", hid_buffer[0]);
-		error = 1;
-		goto exit;
-	}
-
-	// Get keyboard ID
-	memset(hid_buffer, 0, sizeof(hid_buffer));
-	memcpy(&hid_buffer[1], CMD_GET_VIAL_ID, sizeof(CMD_GET_VIAL_ID));
-	if(!usb_write(handle, hid_buffer, 9)) {
-		printf("Error while asking for Vial ID\n");
-		error = 1;
-		goto exit;
-	}
-
-	error = usb_read(handle, hid_buffer, 8);
-	if (error != 0) {
-		printf("Error while retrieving Vial ID\n");
-		error = 1;
-		goto exit;
-	}
-
-	if (vial_id && memcmp(vial_id, hid_buffer, VIAL_ID_SIZE) != 0) {
-		printf("Unexpected Vial ID\n");
+	if (check_vial_uid(handle, vial_id, 0)) {
+		printf("Bootloader check failure\n");
 		error = 1;
 		goto exit;
 	}
