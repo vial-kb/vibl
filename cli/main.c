@@ -84,7 +84,7 @@ int check_vial_uid(hid_device *dev, void *vial_id, int silent) {
 	/* get bootloader version and feature flags */
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 	memcpy(&hid_buffer[1], CMD_BOOTLOADER_IDENT, sizeof(CMD_BOOTLOADER_IDENT));
-	if(!usb_write(dev, hid_buffer, 9)) {
+	if(!usb_write(dev, hid_buffer, 65)) {
 		NON_SILENT printf("Error while asking for bootloader ident\n");
 		return 1;
 	}
@@ -103,7 +103,7 @@ int check_vial_uid(hid_device *dev, void *vial_id, int silent) {
 	/* get keyboard ID */
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 	memcpy(&hid_buffer[1], CMD_GET_VIAL_ID, sizeof(CMD_GET_VIAL_ID));
-	if(!usb_write(dev, hid_buffer, 9)) {
+	if(!usb_write(dev, hid_buffer, 65)) {
 		NON_SILENT printf("Error while asking for Vial ID\n");
 		return 1;
 	}
@@ -253,7 +253,7 @@ int main(int argc, char **argv) {
 	printf("Sending flash pages command...\n");
 
 	// Flash is unavailable when writing to it, so USB interrupt may fail here
-	if(!usb_write(handle, hid_buffer, 9)) {
+	if(!usb_write(handle, hid_buffer, 65)) {
 		printf("Error while sending flash pages command.\n");
 		error = 1;
 		goto exit;
@@ -291,7 +291,7 @@ int main(int argc, char **argv) {
 	/* Reboot */
 	memset(hid_buffer, 0, sizeof(hid_buffer));
 	memcpy(&hid_buffer[1], CMD_REBOOT, sizeof(CMD_REBOOT));
-	usb_write(handle, hid_buffer, 9);
+	usb_write(handle, hid_buffer, 65);
 
 	printf("Ok!\n");
 
