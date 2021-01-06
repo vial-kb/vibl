@@ -113,7 +113,7 @@ static const uint8_t usbHidReportDescriptor[32] = {
 		0x15, 0x00,        //   Logical Minimum (0)
 		0x25, 0xFF,        //   Logical Maximum (-1)
 		0x75, 0x08,        //   Report Size (8)
-		0x95, 0x80,        //   Report Count (128)
+		0x95, 0x40,        //   Report Count (64)
 		0x91, 0x02,        //   Output (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position,Non-volatile)
 		0xC0               // End Collection
 };
@@ -256,36 +256,44 @@ void HIDUSB_HandleData(uint8_t *data) {
 	static uint8_t bootloader_ident[8] = { 0 };
 
 	if (state == STATE_INIT) {
-		if (HIDUSB_PacketIsCommand(data)) {
-			switch (data[2]) {
-			case 0x00:
-				/* Retrieve bootloader version, flags */
-				USB_SendData(ENDP1, bootloader_ident, sizeof(bootloader_ident));
-				break;
-			case 0x01:
-				/* Send vial keyboard ID */
-				USB_SendData(ENDP1, keyboard_id, sizeof(keyboard_id));
-				break;
-			case 0x02:
-				/* Flash */
-				currentPage = 0;
-				pagesToFlash = data[3] + 256 * data[4];
-				/* Don't allow to pass a ridiculous value. 10 megs max */
-				if (pagesToFlash < 10 * 1024 * 1024 / sizeof(pageData)) {
-					state = STATE_FLASH;
-					currentPageOffset = 0;
+		for (size_t i = 0; i < 8; ++i)
+			pageData[currentPageOffset + i] = data[i];
+		currentPageOffset += 8;
+
+		if (currentPageOffset == sizeof(pageData)) {
+			currentPageOffset = 0;
+
+			if (HIDUSB_PacketIsCommand(pageData)) {
+				switch (pageData[2]) {
+				case 0x00:
+					/* Retrieve bootloader version, flags */
+					USB_SendData(ENDP1, bootloader_ident, sizeof(bootloader_ident));
+					break;
+				case 0x01:
+					/* Send vial keyboard ID */
+					USB_SendData(ENDP1, keyboard_id, sizeof(keyboard_id));
+					break;
+				case 0x02:
+					/* Flash */
+					currentPage = 0;
+					pagesToFlash = pageData[3] + 256 * pageData[4];
+					/* Don't allow to pass a ridiculous value. 10 megs max */
+					if (pagesToFlash < 10 * 1024 * 1024 / sizeof(pageData)) {
+						state = STATE_FLASH;
+						currentPageOffset = 0;
+					}
+					break;
+				case 0x03:
+					/* Reboot */
+					NVIC_SystemReset();
+					break;
+				case 0x04:
+					/* set insecure so that on first boot we can restore layout */
+					setInsecureFlag();
+					break;
+				default:
+					break;
 				}
-				break;
-			case 0x03:
-				/* Reboot */
-				NVIC_SystemReset();
-				break;
-			case 0x04:
-				/* set insecure so that on first boot we can restore layout */
-				setInsecureFlag();
-				break;
-			default:
-				break;
 			}
 		}
 	} else if (state == STATE_FLASH) {
