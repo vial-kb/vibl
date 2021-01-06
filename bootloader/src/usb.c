@@ -133,6 +133,22 @@ void USB_Shutdown() {
 static void USB_TurnOn() {
 	bit_set(RCC->APB2ENR, RCC_APB2ENR_IOPAEN);
 
+	/* disconnect usb line */
+	// PA_12 output mode: General purpose output open drain (b01)
+	bit_set(GPIOA->CRH, GPIO_CRH_CNF12_0);
+	bit_clear(GPIOA->CRH, GPIO_CRH_CNF12_1);
+
+	// Set PA_12 to output
+	bit_set(GPIOA->CRH, GPIO_CRH_MODE12);// PA_12 set as: Output mode, max speed 50 MHz.
+
+	// Sinks A12 to GND
+	GPIOA->BRR = GPIO_BRR_BR12;
+
+	/* wait a little */
+	for (volatile int delay = 0; delay < 4000000; ++delay) {}
+
+	/* reconnect usb line */
+
 	// PA_12 output mode: General purpose Input Float (b01)
 	bit_set(GPIOA->CRH, GPIO_CRH_CNF12_0);
 	bit_clear(GPIOA->CRH, GPIO_CRH_CNF12_1);
