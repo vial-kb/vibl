@@ -29,7 +29,7 @@ endif
 
 OBJECTS=$(SOURCES:.c=.o)
 
-EXECUTABLE = hid-flash
+EXECUTABLE = vibl-flash
 
 all: $(SOURCES) $(EXECUTABLE)
 	

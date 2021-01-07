@@ -166,11 +166,12 @@ int main(int argc, char **argv) {
 
 	setbuf(stdout, NULL);
 
-	printf("HID-Flash v1.4a - STM32 HID Bootloader Flash Tool\n");
-	printf("(c) 04/2018 - Bruno Freitas - http://www.brunofreitas.com/\n\n");
+	printf("vibl-flash -- Vial Bootloader flasher\n");
+	printf("\tbased on HID-Flash v1.4a - STM32 HID Bootloader Flash Tool\n");
+	printf("\t(c) 04/2018 - Bruno Freitas - http://www.brunofreitas.com/\n\n");
 
 	if(argc != 2) {
-		printf("Usage: hid-flash <firmware_bin_file>\n");
+		printf("Usage: vibl-flash <firmware_bin_file>\n");
 
 		return 1;
 	}
