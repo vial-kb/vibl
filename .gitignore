@@ -3,4 +3,3 @@ build
 .vscode
 *.o
 vibl-flash
-*.bin
