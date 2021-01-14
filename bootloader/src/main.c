@@ -86,8 +86,8 @@ void SystemClock_Config(void)
 }
 
 int main() {
-	uint32_t userProgramAddress = *(volatile uint32_t *)(USER_PROGRAM + 0x04);
-	funct_ptr userProgram = (funct_ptr) userProgramAddress;
+	uint32_t usrSp = *(volatile uint32_t *)USER_PROGRAM;
+	uint32_t usrMain = *(volatile uint32_t *)(USER_PROGRAM + 0x04); /* reset ptr in vector table */
 
 	SystemClock_Config();
 
@@ -98,9 +98,10 @@ int main() {
 	} else {
 		SCB->VTOR = USER_PROGRAM;
 
-		asm volatile("msr msp, %0"::"g"(*(volatile uint32_t *) USER_PROGRAM));
-
-		userProgram();
+		__asm__ volatile(
+			"msr msp, %0\n"
+			"bx %1\n"
+			:: "r" (usrSp), "r" (usrMain));
 	}
 
 	for(;;);
