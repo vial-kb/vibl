@@ -252,8 +252,7 @@ void HIDUSB_HandleData(uint8_t *data) {
 
 	static uint8_t keyboard_id[8] = VIAL_KEYBOARD_UID;
 
-	/* TODO: bump first byte (version) to 1 before release */
-	static uint8_t bootloader_ident[8] = { 0 };
+	static uint8_t bootloader_ident[8] = { 1 };
 
 	if (state == STATE_INIT) {
 		for (size_t i = 0; i < 8; ++i)
