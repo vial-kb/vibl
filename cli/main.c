@@ -95,7 +95,7 @@ int check_vial_uid(hid_device *dev, void *vial_id, int silent) {
 	}
 
 	/* check supported bootloader version */
-	if (hid_buffer[0] != 0) {
+	if (hid_buffer[0] != 0 && hid_buffer[0] != 1) {
 		NON_SILENT printf("Error: unsupported bootloader version: %d\n", hid_buffer[0]);
 		return 1;
 	}
@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
 		goto exit;
 	}
 
-	if (memcmp(file_buffer, "VIALFW00", 8) == 0) {
+	if (memcmp(file_buffer, "VIALFW00", 8) == 0 || memcmp(file_buffer, "VIALFW01", 8) == 0) {
 		/* is this a vial firmware package? if so, check hash and keep track of vial UID */
 		vial_id = (char*)file_buffer + 8;
 		firmware_buffer = (char*)file_buffer + 64;
