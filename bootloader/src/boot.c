@@ -88,6 +88,12 @@ void setupGPIO(void) {
     /* Enable All GPIO channels (A to G) */
     RCC->APB2ENR |= 0b111111100;
 
+    /* To read/write the AFIO_MAPR register, the AFIO clock should first be enabled. */
+    RCC->APB2ENR |= RCC_APB2ENR_AFIOEN;
+
+    /* Disable JTAG to release PB3, PB4, PA15 */
+    AFIO->MAPR = AFIO_MAPR_SWJ_CFG_JTAGDISABLE;
+
     /* Set (BL_INPUT_BANK,BL_INPUT_PIN) as pulldown input */
     cr = *GPIO_CR(BL_INPUT_BANK,BL_INPUT_PIN) & crMask(BL_INPUT_PIN);
     *GPIO_CR(BL_INPUT_BANK,BL_INPUT_PIN) = cr | CR_INPUT_PU_PD << CR_SHITF(BL_INPUT_PIN);
