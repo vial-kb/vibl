@@ -37,6 +37,10 @@ function(add_bootloader device)
         -Wshadow
     )
 
+    target_link_options(${device}.elf PUBLIC
+        -mcpu=cortex-m3
+    )
+
     target_include_directories(${device}.elf PUBLIC
         src
         deps
