@@ -9,17 +9,17 @@
 #if defined(TARGET_GENERIC)
 #define VIAL_KEYBOARD_UID {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF}
 /* setup for bluepill */
-#define BL_OUTPUT_BANK GPIOB
-#define BL_OUTPUT_PIN 12
-#define BL_INPUT_BANK GPIOB
-#define BL_INPUT_PIN 13
+#define BL_COL_BANK GPIOB
+#define BL_COL_PIN 12
+#define BL_ROW_BANK GPIOB
+#define BL_ROW_PIN 13
 #elif defined(TARGET_VIAL_TEST)
 #define VIAL_KEYBOARD_UID {0x6F, 0xC5, 0xEE, 0x60, 0x90, 0x92, 0x53, 0xA4}
 /* setup for bluepill */
-#define BL_OUTPUT_BANK GPIOB
-#define BL_OUTPUT_PIN 12
-#define BL_INPUT_BANK GPIOB
-#define BL_INPUT_PIN 13
+#define BL_COL_BANK GPIOB
+#define BL_COL_PIN 12
+#define BL_ROW_BANK GPIOB
+#define BL_ROW_PIN 13
 #else
 #error Unknown target
 #endif

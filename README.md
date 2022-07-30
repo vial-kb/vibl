@@ -21,13 +21,13 @@ Currently, implementations are available for:
 */
 #define VIAL_KEYBOARD_UID {0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX, 0xXX}
 /*
-  These configure an emergency key held to trigger bootloader entry on boot.
-  See https://github.com/xyzz/stm32f103-keyboard-bootloader#adding-a-new-keyboard for an explanation.
+  These configure an emergency key which triggers bootloader entry when it is held during boot.
+  The definitions match a typical QMK COL2ROW setup. If you use a ROW2COL setup, switch around ROW and COL in the defines below.
 */
-#define BL_OUTPUT_BANK GPIOB
-#define BL_OUTPUT_PIN 12
-#define BL_INPUT_BANK GPIOB
-#define BL_INPUT_PIN 13
+#define BL_COL_BANK GPIOB
+#define BL_COL_PIN 12
+#define BL_ROW_BANK GPIOB
+#define BL_ROW_PIN 13
 ```
 
 3. Compile the bootloader
@@ -126,3 +126,7 @@ Firmware updater when keyboard is running vial-qmk firmware
 </td>
 </tr>
 </table>
+
+4. Verify the emergency key download is working
+
+Make sure to test that you configured the emergency bootloader key correctly by holding it down while plugging in the keyboard. Review and correct your vibl configuration if the keyboard does not start in bootloader mode when the key is held.
